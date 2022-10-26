@@ -1,0 +1,49 @@
+on: workflow_call
+jobs:
+  gofmt:
+    name: Go fmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install go ${{ vars.REPO_GOLANG_VERSION }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: '${{ vars.REPO_GOLANG_VERSION }}'
+          
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: ./go/src/${{vars.REPO_WORKING_DIRECTORY}}
+          ref: ${{ github.head_ref }}
+          
+      - name: Get goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Run Lint
+        env:
+          GOPATH: /home/runner/work/${{vars.REPO_NAME}}/${{vars.REPO_NAME}}/go
+        run: |
+          files=$(go list ./... 2>/dev/null | grep -v ./tmp | grep -v hydro | sed -Ee "s|${{ vars.REPO_GO_MOD_NAME }}/?|./|" | xargs -I {} find {} -type f -name '*.go' ! -name '*.pb.go' ! -name '*.twirp.go' ! -name 'mock_*.go')
+          
+          echo Run go fmt...
+          for f in $files; do
+            gofmt -w -s "${f}"
+            bin=$(go env GOBIN)
+            if [ -z "${bin}" ]; then
+              bin="${HOME}/go/bin"
+            fi
+            
+            "${bin}/goimports" -l -local ${{ vars.REPO_GO_MOD_NAME }} -w "${f}"
+          done
+          
+        working-directory: ./go/src/${{vars.REPO_WORKING_DIRECTORY}}
+       
+      - name: Commit changes
+        run: |
+          git config --global user.email "${{ vars.REPO_GIT_USER_EMAIL }}" &&
+          git config --global user.name "${{ vars.REPO_GIT_USER_NAME }}" &&
+          (git diff-index HEAD -- &&
+          git add . &&
+          git commit -m 'Add changes produced by gofmt' &&
+          git push) || true
+        working-directory: ./go/src/${{vars.REPO_WORKING_DIRECTORY}}
