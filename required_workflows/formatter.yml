@@ -1,0 +1,14 @@
+name: Generic formatter
+on: [pull_request]
+jobs:
+  call_go_fmt:
+    if: ${{ vars.FORMAT_GO == 'true' }}
+    uses: octademo/format-required-workflows/.github/workflows/go-fmt.yml@main
+  
+  call_prettier_js:
+    if: ${{ vars.PRETTIFY_JS == 'true' }}
+    uses: octademo/format-required-workflows/.github/workflows/prettier-js.yml@main
+  
+  call_prettier_md:
+    if: ${{ vars.PRETTIFY_MD == 'true' }}
+    uses: octademo/format-required-workflows/.github/workflows/prettier-md.yml@main
